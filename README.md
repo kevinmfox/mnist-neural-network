@@ -1,2 +1,2 @@
-# mnist
-Neural network fun with MNIST database
+# Neural Network with MNIST Database
+
