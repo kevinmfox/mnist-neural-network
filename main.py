@@ -1,5 +1,4 @@
 import argparse
-import ast
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
@@ -7,8 +6,8 @@ import pandas as pd
 import pickle
 import pygame
 from tabulate import tabulate
-import _utils
 import _nn
+import _utils
 
 # initialize logging
 logger = _utils.initializeLogging()
@@ -20,11 +19,11 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--random_seed', help='The random seed to be used.', type=int, default=None)
 # training arguments
 parser.add_argument('--train', help='Train the neural network against the test data', action='store_true')
-parser.add_argument('--data_file', help='The file to use for training the network.', type=str, default='data_file.csv')
+parser.add_argument('--data_file', help='The file to use for training the network.', type=str, default='mnist_784.csv')
 parser.add_argument('--hidden_dimensions', help='The dimensions of the hidden layers (e.g. \'[12, 24]\').', type=_utils.arg_int_list, default=[12])
 parser.add_argument('--weight_init', help='The type of initialization for the weights.', choices=['Random', 'XavierUniform', 'XavierNormal', 'HeUniform', 'HeNormal'], default='Random')
 parser.add_argument('--bias_init', help='The type of initialization for the biases.', choices=['Zero', 'Constant', 'Random'], default='Zero')
-parser.add_argument('--hidden_activation', help='The type of activation for the hidden layers.', choices=['ReLU', 'Linear', 'Sigmoid', 'Softmax', 'LeakyReLU', 'ELU', 'TanH'], default='ReLU')
+parser.add_argument('--hidden_activation', help='The type of activation for the hidden layers.', choices=['ReLU', 'Linear', 'Sigmoid', 'LeakyReLU', 'ELU', 'TanH'], default='ReLU')
 parser.add_argument('--learning_rate', help='The learning rate of the network.', type=float, default=0.01)
 parser.add_argument('--momentum_beta', help='Beta value to use when using Momentum optimizer.', type=float, default=0.9)
 parser.add_argument('--rmsprop_beta', help='Beta value to use when using RMSProp optimizer.', type=float, default=0.9)
@@ -41,7 +40,6 @@ parser.add_argument('--early_stopping_patience', help='Number of epochs to wait 
 parser.add_argument('--early_stopping_delta', help='The minimum delta to use when early stopping is enabled.', type=float, default=0)
 parser.add_argument('--decay_type', help='The type of decay to apply to the learning rate.', choices=['time', 'exp'], default=None)
 parser.add_argument('--decay_param', help='The parameter to be used by the decay_type.', type=float, default=None)
-parser.add_argument('--save_model', help='Whether or not to save the model to a pickle file.', action='store_true')
 # other arguments
 parser.add_argument('--read_model', help='Read the information from a saved pickle model file.', action='store_true')
 parser.add_argument('--model_file', help='The name of the pickle file to use.', type=str, default='model.pkl')
@@ -51,7 +49,7 @@ parser.add_argument('--index', help='The index of the image to show.', type=int,
 parser.add_argument('--no_model', help='Will allow the pygame interface to run without a model.', action='store_true')
 # dataset arguments
 parser.add_argument('--create_dataset', help='Will create a dataset from a source dataset.', action='store_true')
-parser.add_argument('--save_file', help='The file to save the new dataset to.', type=str, default='data_file.csv')
+parser.add_argument('--save_file', help='The file to save the new dataset to.', type=str, default='subset.csv')
 parser.add_argument('--samples', help='The number of random samples to save in the new dataset from the source.', type=int, default=1000)
 args = parser.parse_args()
 
@@ -128,7 +126,7 @@ def runPygame(modelParameters, modelMetadata):
     screenWidth = 400
     screenHeight = 600
     screen = pygame.display.set_mode((screenWidth, screenHeight), pygame.DOUBLEBUF)
-    pygame.display.set_caption('Neural Network - Numbers')
+    pygame.display.set_caption('Neural Network - MNIST')
 
     # variables
     drawingAreaBackgroundColor = (255, 255, 255)
@@ -293,7 +291,7 @@ if args.train:
     decayParam = args.decay_param
     validationSize = args.validation_size
     testingSize = args.testing_size
-    saveFile = args.model_file if args.save_model else None
+    saveFile = args.model_file
     
     # move some variables around if we're using adam optimization
     if optimizer == 'adam':

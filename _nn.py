@@ -18,10 +18,9 @@ class ActivationFunction(Enum):
     ReLU = 1
     Linear = 2
     Sigmoid = 3
-    Softmax = 4
-    LeakyReLU = 5
-    ELU = 6
-    TanH = 7
+    LeakyReLU = 4
+    ELU = 5
+    TanH = 6
 
 _logger = None
 
@@ -116,7 +115,7 @@ def _forwardPropagation(X, parameters, hiddenActivation=ActivationFunction.ReLU,
             if dropoutRate:
                 A, mask = forward_dropout(A, dropoutRate)
                 dropoutMasks.append(mask)
-        # last layer
+        # last layer (softmax)
         else:
             A = forward_softmax(Z)
         cache[f'Z{l}'] = Z
@@ -432,7 +431,6 @@ def testNetwork(testingData, testingLabels, parameters):
 
 def testImage(testData, parameters, metadata):
     hiddenActivation = ActivationFunction.ReLU
-    lastActivation = ActivationFunction.Softmax
     if metadata is not None:
         hiddenActivation = metadata['hiddenActivation']
     A, _, _ = _forwardPropagation(testData, parameters, hiddenActivation=hiddenActivation)
