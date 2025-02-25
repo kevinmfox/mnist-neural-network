@@ -111,7 +111,18 @@ def _forwardPropagation(X, parameters, hiddenActivation=ActivationFunction.ReLU,
         Z = np.dot(W, A) + b
         # we're in a hidden layer
         if l < layers:
-            A = forward_relu(Z)
+            if hiddenActivation == ActivationFunction.ReLU:
+                A = forward_relu(Z)
+            elif hiddenActivation == ActivationFunction.Linear:
+                A = forward_linear(Z)
+            elif hiddenActivation == ActivationFunction.LeakyReLU:
+                A = forward_leakyRelu(Z)
+            elif hiddenActivation == ActivationFunction.Sigmoid:
+                A = forward_sigmoid(Z)
+            elif hiddenActivation == ActivationFunction.TanH:
+                A = forward_tanh(Z)
+            elif hiddenActivation == ActivationFunction.ELU:
+                A = forward_elu(Z)
             if dropoutRate:
                 A, mask = forward_dropout(A, dropoutRate)
                 dropoutMasks.append(mask)
