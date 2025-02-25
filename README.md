@@ -123,6 +123,10 @@ Show a test image from a dataset (```--show_image```):
 
 ```main.py --data_file subset.csv --show_image --index 7```
 
+Change how often stats are shown (```--stat_frequency```):
+
+```main.py --data_file subset.csv --stat_frequency 10```
+
 ## User Interface
 
 The UI uses pygame to create/manage the interface.
