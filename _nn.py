@@ -144,6 +144,12 @@ def trainNetwork(
         decayParam,
         randomSeed=None):
 
+    def printStats(epoch, cost, accuracy):
+        if accuracy is None:
+            _logger.info(f'Epoch {epoch}: {cost}')
+        else:
+            _logger.info(f'Epoch {epoch}: Cost = {cost:.4f}; Accuracy = {accuracy:.2%}')
+
     def createBatches(X, Y, batchSize):
         samples = X.shape[1]
         miniBatches = []
@@ -267,6 +273,7 @@ def trainNetwork(
         elif decayType == 'exp':
             return learningRate * np.exp(-decayParam * epoch)
 
+    # was used for troubleshooting
     def showShapes(X, Y, parameters, cache, grads):
         layers = len(parameters) // 2
         print(f'Layers: {layers}')
@@ -311,6 +318,7 @@ def trainNetwork(
     _logger.info(f'Epochs: {epochs}')
 
     costHistory = []
+    accuracy = None
     accuracyHistory = []
     samples = trainingLabels.shape[1]
     batchNumber = 0
@@ -389,10 +397,7 @@ def trainNetwork(
                     earlyStop = patienceCounter >= earlyStoppingPatience
 
             if epoch % 100 == 0:
-                if validationData is None:
-                    _logger.info(f'Epoch {epoch}: {cost}')
-                else:
-                    _logger.info(f'Epoch {epoch}: Cost = {cost:.4f}; Accuracy = {accuracy:.2%}')
+                printStats(epoch, cost, accuracy)
             
             # check if early stop has been triggered
             if earlyStop:
@@ -402,10 +407,7 @@ def trainNetwork(
     except KeyboardInterrupt:
         _logger.warning('Interrupt detected')
 
-    if validationData is None:
-        _logger.info(f'Epoch {epoch}: {cost}')
-    else:
-        _logger.info(f'Epoch {epoch}: Cost = {cost:.4f}; Accuracy = {accuracy:.2%}')
+    printStats(epoch, cost, accuracy)
 
     _logger.info(f'Training complete')
     return parameters, costHistory, accuracyHistory if len(accuracyHistory) > 0 else None

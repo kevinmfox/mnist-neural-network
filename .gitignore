@@ -5,3 +5,4 @@ Lib/**
 *.csv
 pyvenv.cfg
 .pylintrc
+!model-001.pkl
