@@ -1,5 +1,6 @@
 import numpy as np
 import pickle
+import time
 from enum import Enum
 
 class WeightInitMethod(Enum):
@@ -152,13 +153,17 @@ def trainNetwork(
         earlyStoppingDelta,
         decayType,
         decayParam,
+        statFrequency,
         randomSeed=None):
 
-    def printStats(epoch, cost, accuracy):
-        if accuracy is None:
-            _logger.info(f'Epoch {epoch}: {cost}')
-        else:
-            _logger.info(f'Epoch {epoch}: Cost = {cost:.4f}; Accuracy = {accuracy:.2%}')
+    def printStats(epoch, cost, accuracy, deltaEpochs=None, updateFrequency=None):
+        logString = f'Epoch {epoch}; Cost {cost:.4f}'
+        if accuracy is not None:
+            logString += f'; Accuracy {accuracy:.2%}'
+        if deltaEpochs is not None:
+            epochsPerSecond = deltaEpochs / updateFrequency
+            logString += f'; EPS {epochsPerSecond:.2f}'
+        _logger.info(logString)
 
     def createBatches(X, Y, batchSize):
         samples = X.shape[1]
@@ -301,6 +306,9 @@ def trainNetwork(
             print(f"db{l}: {grads[f'db{l}'].shape}")
 
     np.random.seed(randomSeed)
+    lastUpdateTime = time.time()
+    lastUpdateEpochs = 0
+    statFrequency = 5 if statFrequency <= 0 else statFrequency
 
     if dropoutRate == 0:
         dropoutRate = None
@@ -406,8 +414,12 @@ def trainNetwork(
                         patienceCounter += 1
                     earlyStop = patienceCounter >= earlyStoppingPatience
 
-            if epoch % 100 == 0:
-                printStats(epoch, cost, accuracy)
+            # check if it's time to print some stats
+            if time.time() - lastUpdateTime >= statFrequency:
+                lastUpdateTime = time.time()
+                deltaEpochs = epoch - lastUpdateEpochs
+                lastUpdateEpochs = epoch
+                printStats(epoch, cost, accuracy, deltaEpochs, statFrequency)
             
             # check if early stop has been triggered
             if earlyStop:

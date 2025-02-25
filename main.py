@@ -40,6 +40,7 @@ parser.add_argument('--early_stopping_patience', help='Number of epochs to wait 
 parser.add_argument('--early_stopping_delta', help='The minimum delta to use when early stopping is enabled.', type=float, default=0)
 parser.add_argument('--decay_type', help='The type of decay to apply to the learning rate.', choices=['time', 'exp'], default=None)
 parser.add_argument('--decay_param', help='The parameter to be used by the decay_type.', type=float, default=None)
+parser.add_argument('--stat_frequency', help='How often, in seconds, to print stats.', type=int, default=5)
 # other arguments
 parser.add_argument('--read_model', help='Read the information from a saved pickle model file.', action='store_true')
 parser.add_argument('--model_file', help='The name of the pickle file to use.', type=str, default='model.pkl')
@@ -289,6 +290,7 @@ if args.train:
     earlyStoppingDelta = args.early_stopping_delta if earlyStopping else None
     decayType = args.decay_type
     decayParam = args.decay_param
+    statFrequency = args.stat_frequency
     validationSize = args.validation_size
     testingSize = args.testing_size
     saveFile = args.model_file
@@ -357,6 +359,7 @@ if args.train:
         earlyStoppingDelta=earlyStoppingDelta,
         decayType=decayType,
         decayParam=decayParam,
+        statFrequency=statFrequency,
         randomSeed=randomSeed)
     trainingCost = costHistory[-1]
     trainingAccuracy = accuracyHistory[-1] if accuracyHistory else None
