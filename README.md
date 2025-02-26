@@ -21,6 +21,7 @@ The implementation assumes a simple-ish Feedforward Neural Network (FNN), and su
 - Mini-Batches
 - Early stopping with optional delta
 - Specified percentages for validation and testing sets
+- Batch Optimization
 
 ## Installation
 
@@ -124,6 +125,10 @@ Training with image augmentation (```--image_aug_*```):
 ```main.py --train --data_file subset.csv --image_aug_shift 6```
 
 __Note__: Image augmentation will drastically slow down training, however, it gave me the best overall models.
+
+Run with Batch Optimization (```--use_batch_norm```):
+
+```main.py --train --data_file subset.csv --use_batch_norm```
 
 ## Reading Model Files
 
