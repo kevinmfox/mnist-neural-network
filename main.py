@@ -80,6 +80,18 @@ def runPygame(modelParameters, modelMetadata):
             top = 550 - height
             pygame.draw.rect(screen, probabilityRectColor, (i * 35 + 32, top, 20, height))
 
+    def drawHiddenValues(hiddenValues):
+        spacing = 18
+        # normalize the hidden values
+        normalized = (hiddenValues - np.min(hiddenValues)) / (np.max(hiddenValues) - np.min(hiddenValues))
+        # draw the circles
+        for i in range(normalized.shape[0]):
+            col = i // 32
+            row = i - (32 * col)
+            value = normalized[i].item()
+            color = (0, value * 255, 0)
+            pygame.draw.circle(screen, color, (405 + (col * spacing), 20 + (row * spacing)), 6)
+
     def getImageData():
         # get the data to be assessed
         drawRect = pygame.Rect(drawingAreaRect)
@@ -127,7 +139,7 @@ def runPygame(modelParameters, modelMetadata):
 
     # initialize pygame
     pygame.init()
-    screenWidth = 400
+    screenWidth = 570
     screenHeight = 600
     screen = pygame.display.set_mode((screenWidth, screenHeight), pygame.DOUBLEBUF)
     pygame.display.set_caption('Neural Network - MNIST')
@@ -135,7 +147,7 @@ def runPygame(modelParameters, modelMetadata):
     # variables
     drawingAreaBackgroundColor = (255, 255, 255)
     drawingAreaForegroundColor = (0, 0, 0)
-    drawingAreaRect = pygame.Rect(0, 0, screenWidth, 400)
+    drawingAreaRect = pygame.Rect(0, 0, screenWidth-200, 400)
     drawBounds = [drawingAreaRect.width, drawingAreaRect.height, 0, 0]
     probabilityRectColor = (0, 200, 0)
 
@@ -177,8 +189,10 @@ def runPygame(modelParameters, modelMetadata):
         # test the image
         imageData = getImageData()
         if imageData is not None:
-            probabilities = _nn.testImage(imageData, modelParameters, modelMetadata)
+            probabilities, hiddenValues = _nn.testImage(imageData, modelParameters, modelMetadata)
             drawProbabilities(probabilities)
+            if len(hiddenValues) <= 256:
+                drawHiddenValues(hiddenValues)
 
 def loadDataFromCsv(file, validationSize, testingSize, randomSeed=None):
     np.random.seed(randomSeed)

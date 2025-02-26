@@ -501,5 +501,6 @@ def testImage(testData, parameters, metadata):
     if metadata is not None:
         hiddenActivation = metadata['hiddenActivation']
         hiddenActivation = getattr(ActivationFunction, hiddenActivation)
-    A, _, _ = _forwardPropagation(testData, parameters, hiddenActivation=hiddenActivation)
-    return A
+    A, cache, _ = _forwardPropagation(testData, parameters, hiddenActivation=hiddenActivation)
+    layers = len(parameters) // 2
+    return A, cache[f'A{layers-1}']
