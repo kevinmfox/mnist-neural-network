@@ -1,1 +1,3 @@
+Need a flag for image augmentation
 Maybe implement Batch Normaliztion
+

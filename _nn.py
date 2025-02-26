@@ -1,5 +1,7 @@
+import cv2
 import numpy as np
 import pickle
+import random
 import time
 from enum import Enum
 
@@ -156,12 +158,12 @@ def trainNetwork(
         statFrequency,
         randomSeed=None):
 
-    def printStats(epoch, cost, accuracy, deltaEpochs=None, updateFrequency=None):
+    def printStats(epoch, cost, accuracy, deltaEpochs=None, deltaTime=None):
         logString = f'Epoch {epoch}; Cost {cost:.4f}'
         if accuracy is not None:
             logString += f'; Accuracy {accuracy:.2%}'
         if deltaEpochs is not None:
-            epochsPerSecond = deltaEpochs / updateFrequency
+            epochsPerSecond = deltaEpochs / deltaTime
             logString += f'; EPS {epochsPerSecond:.2f}'
         _logger.info(logString)
 
@@ -288,6 +290,41 @@ def trainNetwork(
         elif decayType == 'exp':
             return learningRate * np.exp(-decayParam * epoch)
 
+    def augmentImages(images, scaleRange=0.4, angleRange=40, shiftRange=6):
+        # make sure we're actually doing something
+        if scaleRange is None and angleRange is None and shiftRange is None:
+            return
+        # carve out some space for our new images
+        newImages = np.zeros_like(images)
+        # loop through the images
+        for i in range(images.shape[1]):
+            image = images[:, i].reshape((28, 28))
+            height, width = image.shape
+            if scaleRange is not None:
+                scaleAdjustment = random.uniform(1 - (scaleRange / 2), 1 + (scaleRange / 2))
+                new_height, new_width = int(height * scaleAdjustment), int(width * scaleAdjustment)
+                image = cv2.resize(image, (new_width, new_height))
+                if scaleAdjustment > 1:
+                    start_y, start_x = (new_height - height) // 2, (new_width - width) // 2
+                    image = image[start_y:start_y+height, start_x:start_x+width]
+                else:
+                    pad_y, pad_x = (height - new_height) // 2, (width - new_width) // 2
+                    image = cv2.copyMakeBorder(image, pad_y, pad_y, pad_x, pad_x, cv2.BORDER_CONSTANT, value=0)                
+                image = cv2.resize(image, (28, 28))
+            if angleRange is not None:
+                center = (width // 2, height // 2)
+                angleAdjustment = random.uniform(-(angleRange / 2), (angleRange / 2))
+                rotationMatrix = cv2.getRotationMatrix2D(center, angleAdjustment, 1.0)
+                image = cv2.warpAffine(image, rotationMatrix, (width, height), borderMode=cv2.BORDER_CONSTANT, borderValue=0)
+            if shiftRange is not None:
+                xShift = random.uniform(-(shiftRange / 2), (shiftRange / 2))
+                yShift = random.uniform(-(shiftRange / 2), (shiftRange / 2))
+                translationMatrix = np.float32([[1, 0, xShift], [0, 1, yShift]])
+                image = cv2.warpAffine(image, translationMatrix, (width, height), borderMode=cv2.BORDER_CONSTANT, borderValue=0)
+            image = image.reshape((784,))
+            newImages[:, i] = image
+        return newImages
+
     # was used for troubleshooting
     def showShapes(X, Y, parameters, cache, grads):
         layers = len(parameters) // 2
@@ -371,6 +408,9 @@ def trainNetwork(
                 batchNumber += 1
                 batchSize = X.shape[1]
 
+                # TESTING
+                X = augmentImages(X)
+
                 # forward propagation
                 A, cache, dropoutMasks = _forwardPropagation(X, parameters, hiddenActivation, dropoutRate)
 
@@ -415,11 +455,12 @@ def trainNetwork(
                     earlyStop = patienceCounter >= earlyStoppingPatience
 
             # check if it's time to print some stats
-            if time.time() - lastUpdateTime >= statFrequency:
+            if time.time() - lastUpdateTime >= statFrequency or epoch % 100 == 0:
+                deltaTime = time.time() - lastUpdateTime
                 lastUpdateTime = time.time()
                 deltaEpochs = epoch - lastUpdateEpochs
                 lastUpdateEpochs = epoch
-                printStats(epoch, cost, accuracy, deltaEpochs, statFrequency)
+                printStats(epoch, cost, accuracy, deltaEpochs, deltaTime)
             
             # check if early stop has been triggered
             if earlyStop:

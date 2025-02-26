@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import pickle
 import pygame
+import random
 from tabulate import tabulate
 import _nn
 import _utils
@@ -442,6 +443,38 @@ elif args.show_image:
     trainingData, trainingLabels, _, _, _, _ = loadDataFromCsv(trainingFile, 0, 0)
 
     # show an image
+    showImage(trainingData, trainingLabels, imageIndex)
+
+    scaleRange=0.4
+    angleRange=40
+    shiftRange=6
+        
+    images = trainingData
+    if scaleRange is not None:
+        image = images[:, imageIndex].reshape((28, 28))
+        height, width = image.shape
+        scaleAdjustment = random.uniform(1 - (scaleRange / 2), 1 + (scaleRange / 2))
+        new_height, new_width = int(height * scaleAdjustment), int(width * scaleAdjustment)
+        image = cv2.resize(image, (new_width, new_height))
+        if scaleAdjustment > 1:
+            start_y, start_x = (new_height - height) // 2, (new_width - width) // 2
+            image = image[start_y:start_y+height, start_x:start_x+width]
+        else:
+            pad_y, pad_x = (height - new_height) // 2, (width - new_width) // 2
+            image = cv2.copyMakeBorder(image, pad_y, pad_y, pad_x, pad_x, cv2.BORDER_CONSTANT, value=0)                
+        image = cv2.resize(image, (28, 28))
+    if angleRange is not None:
+        center = (width // 2, height // 2)
+        angleAdjustment = random.uniform(-(angleRange / 2), (angleRange / 2))
+        rotationMatrix = cv2.getRotationMatrix2D(center, angleAdjustment, 1.0)
+        image = cv2.warpAffine(image, rotationMatrix, (width, height), borderMode=cv2.BORDER_CONSTANT, borderValue=0)
+    if shiftRange is not None:
+        xShift = random.uniform(-(shiftRange / 2), (shiftRange / 2))
+        yShift = random.uniform(-(shiftRange / 2), (shiftRange / 2))
+        translationMatrix = np.float32([[1, 0, xShift], [0, 1, yShift]])
+        image = cv2.warpAffine(image, translationMatrix, (width, height), borderMode=cv2.BORDER_CONSTANT, borderValue=0)
+    trainingData[:, imageIndex] = image.reshape((784,))
+
     showImage(trainingData, trainingLabels, imageIndex)
 
 # creating a dataset
