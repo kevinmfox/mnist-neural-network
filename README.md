@@ -45,13 +45,17 @@ The program allows for:
 - Viewing models (```--read_model```)
 - And runnin a UI to test a model (no parameters)
 
-I've included a ```model-001.pkl``` file. It turned out pretty good all things considered. I know FNN aren't the best for these types of problems, and I do plan to redo some of this once I get around to playing with CNNs.
-
 Before I implemented image augmentation (stretch, rotation, shifting) my results were OK, but not great. After image augmentation was put in place, the models turned out much better.
 
 One of the best training runs I had was from this command:
 
 ```.\main.py --train --data_file mnist_784.csv --epochs 5000 --optimizer 'adam' --hidden_dimensions [128] --dropout_rate 20 --batch_size 1000 --early_stopping --early_stopping_patience 10 --show_charts --validation_size 20 --image_aug_stretch 20 --image_aug_rotate 40 --image_aug_shift 8```
+
+I've included a ```model-001.pkl``` file. It turned out pretty good all things considered. I know FNN aren't the best for these types of problems, and I do plan to redo some of this once I get around to playing with CNNs.
+
+You can give that a run with:
+
+```.\main.py --model_file model-001.pkl```
 
 ## Creating Datasets
 
