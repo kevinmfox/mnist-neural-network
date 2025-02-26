@@ -84,6 +84,9 @@ def runPygame(modelParameters, modelMetadata):
         spacing = 18
         # normalize the hidden values
         normalized = (hiddenValues - np.min(hiddenValues)) / (np.max(hiddenValues) - np.min(hiddenValues))
+        # check for all zeros
+        if np.isnan(normalized[0]):
+            normalized = np.zeros_like(hiddenValues)
         # draw the circles
         for i in range(normalized.shape[0]):
             col = i // 32
