@@ -70,9 +70,13 @@ def initializeNetwork(hiddenLayerDimensions, weightInitMethod=WeightInitMethod.R
             stddev = np.sqrt(2 / layers[i-1])
             parameters[f'b{i}'] = np.random.randn(layers[i], 1) * stddev
 
+        # initialize batch normalization
+        parameters[f'gamma{i}'] = np.ones((layers[i], 1))
+        parameters[f'beta{i}'] = np.zeros((layers[i], 1))
+
     return parameters
 
-def _forwardPropagation(X, parameters, hiddenActivation=ActivationFunction.ReLU, dropoutRate=None):
+def _forwardPropagation(X, parameters, hiddenActivation=ActivationFunction.ReLU, dropoutRate=None, useBatchNorm=False):
     def forward_relu(x):
         return np.maximum(0, x)
 
@@ -103,17 +107,35 @@ def _forwardPropagation(X, parameters, hiddenActivation=ActivationFunction.ReLU,
 
     A = X
     cache = {}
-    layers = len(parameters) // 2
+    layers = len(parameters) // 4
     dropoutMasks = []
+    epsilon = 1e-8
 
     cache['A0'] = X
 
     for l in range(1, layers + 1):
         W = parameters[f'W{l}']
         b = parameters[f'b{l}']
+
+        # calculate Z
         Z = np.dot(W, A) + b
+
         # we're in a hidden layer
         if l < layers:
+            # we're using batch normalization
+            if useBatchNorm:
+                beta = parameters[f'beta{l}']
+                gamma = parameters[f'gamma{l}']
+                mu = np.mean(Z, axis=1, keepdims=True)
+                variance = np.var(Z, axis=1, keepdims=True)
+                Z_hat = (Z - mu) / np.sqrt(variance + epsilon)
+                Z = gamma * Z_hat + beta
+                cache[f'beta{l}'] = beta
+                cache[f'gamma{l}'] = gamma
+                cache[f'mu{l}'] = mu
+                cache[f'variance{l}'] = variance
+                cache[f'Z_hat{l}'] = Z_hat
+            
             if hiddenActivation == ActivationFunction.ReLU:
                 A = forward_relu(Z)
             elif hiddenActivation == ActivationFunction.Linear:
@@ -158,6 +180,7 @@ def trainNetwork(
         imageStretch,
         imageRotate,
         imageShift,
+        useBatchNorm,
         statFrequency,
         randomSeed=None):
 
@@ -189,7 +212,7 @@ def trainNetwork(
 
     def initializeMomentum(parameters):
         v = {}
-        layers = len(parameters) // 2
+        layers = len(parameters) // 4
         for l in range(1, layers + 1):
             v[f'dW{l}'] = np.zeros_like(parameters[f'W{l}'])
             v[f'db{l}'] = np.zeros_like(parameters[f'b{l}'])
@@ -197,13 +220,13 @@ def trainNetwork(
 
     def initializeRmsProp(parameters):
         s = {}
-        layers = len(parameters) // 2
+        layers = len(parameters) // 4
         for l in range(1, layers + 1):
             s[f'dW{l}'] = np.zeros_like(parameters[f'W{l}'])
             s[f'db{l}'] = np.zeros_like(parameters[f'b{l}'])
         return s
 
-    def backwardPropagation(X, Y, cache, parameters, hiddenActivation=ActivationFunction.ReLU, dropoutRate=None, dropoutMasks=None):
+    def backwardPropagation(X, Y, cache, parameters, hiddenActivation=ActivationFunction.ReLU, dropoutRate=None, dropoutMasks=None, useBatchNorm=False):
         def backward_relu(Z):
             return np.where(Z > 0, 1, 0)
 
@@ -219,8 +242,9 @@ def trainNetwork(
             return dA
 
         samples = X.shape[1]
-        layers = len(cache) // 2
+        layers = len(parameters) // 4
         grads = {}
+        epsilon = 1e-8
 
         for l in range(layers, 0, -1):
             A = cache[f'A{l}']
@@ -228,6 +252,8 @@ def trainNetwork(
             # last layer (softmax)
             if l == layers:
                 dZ = backward_softmax(A, Y)
+                grads[f'dW{l}'] = np.dot(dZ, A_prev.T) / samples
+                grads[f'db{l}'] = np.sum(dZ, axis=1, keepdims=True) / samples
             # hidden layer (relu)
             else:
                 W_next = parameters[f'W{l+1}']
@@ -236,13 +262,28 @@ def trainNetwork(
                 dZ = backward_relu(Z) * dA
                 if dropoutRate:
                     dA = backward_dropout(dA, dropoutMasks[l-1], dropoutRate)
-            grads[f'dW{l}'] = np.dot(dZ, A_prev.T) / samples
-            grads[f'db{l}'] = np.sum(dZ, axis=1, keepdims=True) / samples
-        
+                grads[f'dW{l}'] = np.dot(dZ, A_prev.T) / samples
+                grads[f'db{l}'] = np.sum(dZ, axis=1, keepdims=True) / samples
+
+                # check if we're doing bach normalization
+                if useBatchNorm:
+                    Z_hat = cache[f'Z_hat{l}']
+                    mu = cache[f'mu{l}']
+                    variance = cache[f'variance{l}']
+                    gamma = cache[f'gamma{l}']
+                    dbeta = np.sum(dZ, axis=1, keepdims=True)
+                    dgamma = np.sum(dZ * Z_hat, axis=1, keepdims=True)
+                    dZ_hat = dZ * gamma
+                    dvariance = np.sum(dZ_hat * (Z - mu) * -0.5 * np.power(variance + epsilon, -1.5), axis=1, keepdims=True)
+                    dmu = np.sum(dZ_hat * -1 / np.sqrt(variance + epsilon), axis=1, keepdims=True) + dvariance * np.sum(-2 * (Z - mu), axis=1, keepdims=True) / samples
+                    dZ = dZ_hat / np.sqrt(variance + epsilon) + dvariance * 2 * (Z - mu) / samples + dmu / samples
+                    grads[f'dgamma{l}'] = dgamma
+                    grads[f'dbeta{l}'] = dbeta
+
         return grads
 
-    def updateParameters(parameters, grads, momentumParams, rmsPropParams, learningRate, momentumBeta, rmsPropBeta, batchNumber):
-        layers = len(parameters) // 2
+    def updateParameters(parameters, grads, momentumParams, rmsPropParams, learningRate, momentumBeta, rmsPropBeta, batchNumber, useBatchNorm):
+        layers = len(parameters) // 4
         v_corrected = {}
         s_corrected = {}
         epsilon = 1e-8
@@ -284,7 +325,12 @@ def trainNetwork(
             else:
                 parameters[f'W{l}'] -= learningRate * grads[f'dW{l}']
                 parameters[f'b{l}'] -= learningRate * grads[f'db{l}']
-    
+                
+            # not on the last layer
+            if useBatchNorm and l < layers:
+                parameters[f'gamma{l}'] -= learningRate * grads[f'dgamma{l}']
+                parameters[f'beta{l}'] -= learningRate * grads[f'dbeta{l}']
+     
         return parameters, momentumParams, rmsPropParams
 
     def updateLearningRate(decayType, decayParam, learningRate, epoch):
@@ -327,7 +373,7 @@ def trainNetwork(
 
     # was used for troubleshooting
     def showShapes(X, Y, parameters, cache, grads):
-        layers = len(parameters) // 2
+        layers = len(parameters) // 4
         print(f'Layers: {layers}')
         print(f'X: {X.shape}')
         print(f'Y: {Y.shape}')
@@ -373,6 +419,7 @@ def trainNetwork(
     imageStretch and _logger.info(f'Image stretch: {imageStretch}')
     imageRotate and _logger.info(f'Image rotate: {imageRotate}')
     imageShift and _logger.info(f'Image shift: {imageShift}')
+    _logger.info(f'Batch normalization: {useBatchNorm}')
     _logger.info(f'Epochs: {epochs}')
 
     costHistory = []
@@ -417,13 +464,13 @@ def trainNetwork(
                     X = augmentImages(X, imageStretch, imageRotate, imageShift)
 
                 # forward propagation
-                A, cache, dropoutMasks = _forwardPropagation(X, parameters, hiddenActivation, dropoutRate)
+                A, cache, dropoutMasks = _forwardPropagation(X, parameters, hiddenActivation, dropoutRate, useBatchNorm)
 
                 # backward propagation
-                grads = backwardPropagation(X, Y, cache, parameters, hiddenActivation, dropoutRate, dropoutMasks)
+                grads = backwardPropagation(X, Y, cache, parameters, hiddenActivation, dropoutRate, dropoutMasks, useBatchNorm)
 
                 # update the parameters
-                parameters, momentumParams, rmsPropParams = updateParameters(parameters, grads, momentumParams, rmsPropParams, learningRate, momentumBeta, rmsPropBeta, batchNumber)
+                parameters, momentumParams, rmsPropParams = updateParameters(parameters, grads, momentumParams, rmsPropParams, learningRate, momentumBeta, rmsPropBeta, batchNumber, useBatchNorm)
 
                 # calculate the batch cost
                 batchCost = -np.sum(Y * np.log(A + 1e-9)) / batchSize
@@ -503,5 +550,5 @@ def testImage(testData, parameters, metadata):
         hiddenActivation = metadata['hiddenActivation']
         hiddenActivation = getattr(ActivationFunction, hiddenActivation)
     A, cache, _ = _forwardPropagation(testData, parameters, hiddenActivation=hiddenActivation)
-    layers = len(parameters) // 2
+    layers = len(parameters) // 4
     return A, cache[f'A{layers-1}']

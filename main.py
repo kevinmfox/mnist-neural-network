@@ -43,6 +43,7 @@ parser.add_argument('--decay_param', help='The parameter to be used by the decay
 parser.add_argument('--image_aug_stretch', help='The range (%) to stretch the images during training.', type=int, default=None)
 parser.add_argument('--image_aug_rotate', help='The range (in degrees) to rotate the image during training.', type=int, default=None)
 parser.add_argument('--image_aug_shift', help='The range (in pixels) to shift the image during training.', type=int, default=None)
+parser.add_argument('--use_batch_norm', help='Set to enable batch normalization between hidden layers.', action='store_true')
 parser.add_argument('--stat_frequency', help='How often, in seconds, to print stats.', type=int, default=5)
 # other arguments
 parser.add_argument('--read_model', help='Read the information from a saved pickle model file.', action='store_true')
@@ -108,6 +109,14 @@ def runPygame(modelParameters, modelMetadata):
         bottom = drawBounds[3]
         width = right - left
         height = bottom - top
+        if width < 50:
+            left -= (50 - width) / 2
+            right += (50 - width) / 2
+            width = right - left
+        if height < 50:
+            top -= (50 - height) / 2
+            bottom += (50 - height) / 2
+            height = bottom - top
         if width > height * 1.2:
             top = top - ((width - height) / 2)
             bottom = bottom + ((width - height) / 2)
@@ -313,6 +322,7 @@ if args.train:
     imageStretch =args.image_aug_stretch
     imageRotate = args.image_aug_rotate
     imageShift = args.image_aug_shift
+    useBatchNorm = True if args.use_batch_norm else False
     statFrequency = args.stat_frequency
     validationSize = args.validation_size
     testingSize = args.testing_size
@@ -385,6 +395,7 @@ if args.train:
         imageStretch=imageStretch,
         imageRotate=imageRotate,
         imageShift=imageShift,
+        useBatchNorm=useBatchNorm,
         statFrequency=statFrequency,
         randomSeed=randomSeed)
     trainingCost = costHistory[-1]
