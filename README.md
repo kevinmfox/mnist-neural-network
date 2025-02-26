@@ -47,6 +47,12 @@ The program allows for:
 
 I've included a ```model-001.pkl``` file. It turned out pretty good all things considered. I know FNN aren't the best for these types of problems, and I do plan to redo some of this once I get around to playing with CNNs.
 
+Before I implemented image augmentation (stretch, rotation, shifting) my results were OK, but not great. After image augmentation was put in place, the models turned out much better.
+
+One of the best training runs I had was from this command:
+
+```.\main.py --train --data_file mnist_784.csv --epochs 5000 --optimizer 'adam' --hidden_dimensions [128] --dropout_rate 20 --batch_size 1000 --early_stopping --early_stopping_patience 10 --show_charts --validation_size 20 --image_aug_stretch 20 --image_aug_rotate 40 --image_aug_shift 8```
+
 ## Creating Datasets
 
 Create a subset of number data from a given source file. For example, the mnist_784.csv file contains 70,000 samples. You might want to create a smaller subset to play with:
@@ -104,6 +110,16 @@ Implement early stopping (```--early_stopping```):
 Implement learning decay (```--decay_type```):
 
 ```main.py --train --data_file subset.csv --decay_type 'time' --decay_param 0.01```
+
+Training with image augmentation (```--image_aug_*```):
+
+```main.py --train --data_file subset.csv --image_aug_stretch 10```
+
+```main.py --train --data_file subset.csv --image_aug_rotate 20```
+
+```main.py --train --data_file subset.csv --image_aug_shift 6```
+
+__Note__: Image augmentation will drastically slow down training, however, it gave me the best overall models.
 
 ## Reading Model Files
 

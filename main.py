@@ -5,7 +5,6 @@ import numpy as np
 import pandas as pd
 import pickle
 import pygame
-import random
 from tabulate import tabulate
 import _nn
 import _utils
@@ -41,6 +40,9 @@ parser.add_argument('--early_stopping_patience', help='Number of epochs to wait 
 parser.add_argument('--early_stopping_delta', help='The minimum delta to use when early stopping is enabled.', type=float, default=0)
 parser.add_argument('--decay_type', help='The type of decay to apply to the learning rate.', choices=['time', 'exp'], default=None)
 parser.add_argument('--decay_param', help='The parameter to be used by the decay_type.', type=float, default=None)
+parser.add_argument('--image_aug_stretch', help='The range (%) to stretch the images during training.', type=int, default=None)
+parser.add_argument('--image_aug_rotate', help='The range (in degrees) to rotate the image during training.', type=int, default=None)
+parser.add_argument('--image_aug_shift', help='The range (in pixels) to shift the image during training.', type=int, default=None)
 parser.add_argument('--stat_frequency', help='How often, in seconds, to print stats.', type=int, default=5)
 # other arguments
 parser.add_argument('--read_model', help='Read the information from a saved pickle model file.', action='store_true')
@@ -291,6 +293,9 @@ if args.train:
     earlyStoppingDelta = args.early_stopping_delta if earlyStopping else None
     decayType = args.decay_type
     decayParam = args.decay_param
+    imageStretch =args.image_aug_stretch
+    imageRotate = args.image_aug_rotate
+    imageShift = args.image_aug_shift
     statFrequency = args.stat_frequency
     validationSize = args.validation_size
     testingSize = args.testing_size
@@ -360,6 +365,9 @@ if args.train:
         earlyStoppingDelta=earlyStoppingDelta,
         decayType=decayType,
         decayParam=decayParam,
+        imageStretch=imageStretch,
+        imageRotate=imageRotate,
+        imageShift=imageShift,
         statFrequency=statFrequency,
         randomSeed=randomSeed)
     trainingCost = costHistory[-1]
@@ -393,6 +401,9 @@ if args.train:
             'earlyStoppingDelta': earlyStoppingDelta,
             'decayType': decayType,
             'decayParam': decayParam,
+            'imageStretch': imageStretch,
+            'imageRotate': imageRotate,
+            'imageShift': imageShift,
             'epochs': epochs,
             'trainingSize': trainingData.shape[1],
             'validationSize': validationData.shape[1] if validationData is not None else None,
@@ -443,38 +454,6 @@ elif args.show_image:
     trainingData, trainingLabels, _, _, _, _ = loadDataFromCsv(trainingFile, 0, 0)
 
     # show an image
-    showImage(trainingData, trainingLabels, imageIndex)
-
-    scaleRange=0.4
-    angleRange=40
-    shiftRange=6
-        
-    images = trainingData
-    if scaleRange is not None:
-        image = images[:, imageIndex].reshape((28, 28))
-        height, width = image.shape
-        scaleAdjustment = random.uniform(1 - (scaleRange / 2), 1 + (scaleRange / 2))
-        new_height, new_width = int(height * scaleAdjustment), int(width * scaleAdjustment)
-        image = cv2.resize(image, (new_width, new_height))
-        if scaleAdjustment > 1:
-            start_y, start_x = (new_height - height) // 2, (new_width - width) // 2
-            image = image[start_y:start_y+height, start_x:start_x+width]
-        else:
-            pad_y, pad_x = (height - new_height) // 2, (width - new_width) // 2
-            image = cv2.copyMakeBorder(image, pad_y, pad_y, pad_x, pad_x, cv2.BORDER_CONSTANT, value=0)                
-        image = cv2.resize(image, (28, 28))
-    if angleRange is not None:
-        center = (width // 2, height // 2)
-        angleAdjustment = random.uniform(-(angleRange / 2), (angleRange / 2))
-        rotationMatrix = cv2.getRotationMatrix2D(center, angleAdjustment, 1.0)
-        image = cv2.warpAffine(image, rotationMatrix, (width, height), borderMode=cv2.BORDER_CONSTANT, borderValue=0)
-    if shiftRange is not None:
-        xShift = random.uniform(-(shiftRange / 2), (shiftRange / 2))
-        yShift = random.uniform(-(shiftRange / 2), (shiftRange / 2))
-        translationMatrix = np.float32([[1, 0, xShift], [0, 1, yShift]])
-        image = cv2.warpAffine(image, translationMatrix, (width, height), borderMode=cv2.BORDER_CONSTANT, borderValue=0)
-    trainingData[:, imageIndex] = image.reshape((784,))
-
     showImage(trainingData, trainingLabels, imageIndex)
 
 # creating a dataset

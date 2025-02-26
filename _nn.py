@@ -155,6 +155,9 @@ def trainNetwork(
         earlyStoppingDelta,
         decayType,
         decayParam,
+        imageStretch,
+        imageRotate,
+        imageShift,
         statFrequency,
         randomSeed=None):
 
@@ -290,30 +293,27 @@ def trainNetwork(
         elif decayType == 'exp':
             return learningRate * np.exp(-decayParam * epoch)
 
-    def augmentImages(images, scaleRange=0.4, angleRange=40, shiftRange=6):
-        # make sure we're actually doing something
-        if scaleRange is None and angleRange is None and shiftRange is None:
-            return
+    def augmentImages(images, stretchRange, rotateRange, shiftRange):
         # carve out some space for our new images
         newImages = np.zeros_like(images)
         # loop through the images
         for i in range(images.shape[1]):
             image = images[:, i].reshape((28, 28))
             height, width = image.shape
-            if scaleRange is not None:
-                scaleAdjustment = random.uniform(1 - (scaleRange / 2), 1 + (scaleRange / 2))
-                new_height, new_width = int(height * scaleAdjustment), int(width * scaleAdjustment)
+            if stretchRange is not None:
+                stretchAdjustment = random.uniform(100 - (stretchRange / 2), 100 + (stretchRange / 2)) / 100.
+                new_height, new_width = int(height * stretchAdjustment), int(width * stretchAdjustment)
                 image = cv2.resize(image, (new_width, new_height))
-                if scaleAdjustment > 1:
+                if stretchAdjustment > 1:
                     start_y, start_x = (new_height - height) // 2, (new_width - width) // 2
                     image = image[start_y:start_y+height, start_x:start_x+width]
                 else:
                     pad_y, pad_x = (height - new_height) // 2, (width - new_width) // 2
                     image = cv2.copyMakeBorder(image, pad_y, pad_y, pad_x, pad_x, cv2.BORDER_CONSTANT, value=0)                
                 image = cv2.resize(image, (28, 28))
-            if angleRange is not None:
+            if rotateRange is not None:
                 center = (width // 2, height // 2)
-                angleAdjustment = random.uniform(-(angleRange / 2), (angleRange / 2))
+                angleAdjustment = random.uniform(-(rotateRange / 2), (rotateRange / 2))
                 rotationMatrix = cv2.getRotationMatrix2D(center, angleAdjustment, 1.0)
                 image = cv2.warpAffine(image, rotationMatrix, (width, height), borderMode=cv2.BORDER_CONSTANT, borderValue=0)
             if shiftRange is not None:
@@ -370,6 +370,9 @@ def trainNetwork(
     earlyStoppingDelta and _logger.info(f'Early stopping minimum delta: {earlyStoppingDelta}')
     decayType and _logger.info(f'Decay type: {decayType}')
     decayType and _logger.info(f'Decay param: {decayParam}')
+    imageStretch and _logger.info(f'Image stretch: {imageStretch}')
+    imageRotate and _logger.info(f'Image rotate: {imageRotate}')
+    imageShift and _logger.info(f'Image shift: {imageShift}')
     _logger.info(f'Epochs: {epochs}')
 
     costHistory = []
@@ -408,8 +411,9 @@ def trainNetwork(
                 batchNumber += 1
                 batchSize = X.shape[1]
 
-                # TESTING
-                X = augmentImages(X)
+                # check if we're performing any image augmentation
+                if any(v is not None for v in [imageStretch, imageRotate, imageShift]):
+                    X = augmentImages(X, imageStretch, imageRotate, imageShift)
 
                 # forward propagation
                 A, cache, dropoutMasks = _forwardPropagation(X, parameters, hiddenActivation, dropoutRate)
