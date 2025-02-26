@@ -494,8 +494,8 @@ def testNetwork(testingData, testingLabels, parameters):
     return cost_test, accuracy
 
 def testImage(testData, parameters, metadata):
-    hiddenActivation = ActivationFunction.ReLU
     if metadata is not None:
         hiddenActivation = metadata['hiddenActivation']
+        hiddenActivation = getattr(ActivationFunction, hiddenActivation)
     A, _, _ = _forwardPropagation(testData, parameters, hiddenActivation=hiddenActivation)
     return A
