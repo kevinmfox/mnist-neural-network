@@ -391,12 +391,13 @@ def trainNetwork(
 
     try:
         for epoch in range(1, epochs + 1):
+            # shuffle the training data
+            permutation = np.random.permutation(samples)
+            trainingData = trainingData[:, permutation]
+            trainingLabels = trainingLabels[:, permutation]
+
             # check if we're using mini-batches
             if miniBatchSize is not None:
-                # shuffle the data
-                permutation = np.random.permutation(samples)
-                trainingData = trainingData[:, permutation]
-                trainingLabels = trainingLabels[:, permutation]
                 # create the batches
                 batches = createBatches(trainingData, trainingLabels, miniBatchSize)
             # not using mini-batches - create a single batch
@@ -404,7 +405,7 @@ def trainNetwork(
                 # create a single batch
                 batches = []
                 batches.append((trainingData, trainingLabels))
-            
+
             # loop through the batches (may only be one batch if mini-batches are not used)
             batchCosts = []
             for X, Y in batches:
