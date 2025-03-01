@@ -3,4 +3,5 @@ numpy
 opencv-python
 pandas
 pygame
+seaborn
 tabulate

@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import pickle
 import pygame
+import seaborn
 from tabulate import tabulate
 import _nn
 import _utils
@@ -52,6 +53,7 @@ parser.add_argument('--show_charts', action='store_true')
 parser.add_argument('--show_image', help='Will show an image from the training set.', action='store_true')
 parser.add_argument('--index', help='The index of the image to show.', type=int, default=0)
 parser.add_argument('--no_model', help='Will allow the pygame interface to run without a model.', action='store_true')
+parser.add_argument('--confusion_matrix', help='Will show a confusion matrix.', action='store_true')
 # dataset arguments
 parser.add_argument('--create_dataset', help='Will create a dataset from a source dataset.', action='store_true')
 parser.add_argument('--save_file', help='The file to save the new dataset to.', type=str, default='subset.csv')
@@ -206,7 +208,7 @@ def runPygame(modelParameters, modelMetadata):
             if len(hiddenValues) <= 256:
                 drawHiddenValues(hiddenValues)
 
-def loadDataFromCsv(file, validationSize, testingSize, randomSeed=None):
+def loadDataFromCsv(file, validationSize, testingSize, randomSeed=None, randomize=True):
     np.random.seed(randomSeed)
     logger.info(f'Loading data from file: {file}')
     try:
@@ -226,9 +228,10 @@ def loadDataFromCsv(file, validationSize, testingSize, randomSeed=None):
         imageData = imageData / 255.0
         labelData = np.eye(10)[labelData]
         labelData = labelData.reshape(labelData.shape[0], -1).T
-        indices = np.random.permutation(imageData.shape[1])
-        imageData = imageData[:, indices]
-        labelData = labelData[:, indices]
+        if randomize:
+            indices = np.random.permutation(imageData.shape[1])
+            imageData = imageData[:, indices]
+            labelData = labelData[:, indices]
 
         # distribute our data sets
         totalSamples = len(imageData[1])
@@ -479,10 +482,50 @@ elif args.show_image:
     imageIndex = args.index
 
     # load the training data
-    trainingData, trainingLabels, _, _, _, _ = loadDataFromCsv(trainingFile, 0, 0)
+    trainingData, trainingLabels, _, _, _, _ = loadDataFromCsv(trainingFile, 0, 0, randomize=False)
 
     # show an image
     showImage(trainingData, trainingLabels, imageIndex)
+
+# show a confusion matrix
+elif args.confusion_matrix:
+    logger.info('Creating confusion matrix')
+    
+    # get some values
+    dataFile = args.data_file
+    modelFile = args.model_file
+
+    # load the training data
+    trainingData, trainingLabels, _, _, _, _ = loadDataFromCsv(dataFile, 0, 0, randomize=False)
+
+    if not args.no_model:
+        logger.info(f'Using model file: {modelFile}')
+    
+        # read the model file
+        try:
+            with open(modelFile, 'rb') as f:
+                modelInfo = pickle.load(f)
+            metadata = modelInfo['metadata']
+            parameters = modelInfo['parameters']
+        except Exception as e:
+            logger.error(f'Failed to read model file: {e}')
+            exit()
+    else:
+        logger.warning('Running with no model.')
+        parameters = None
+        metadata = None
+
+    # get the confusion matrix results
+    matrix, predictions, trueLabels = _nn.createConfusionMatrix(trainingData, trainingLabels, parameters, metadata)
+    #missed = np.where((predictions == 7) & (trueLabels == 9))[0]
+
+    # show the confusion matrix using Seaborn
+    plt.figure(figsize=(6,5))
+    seaborn.heatmap(matrix, annot=True, fmt='d', cmap='Blues', xticklabels=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9], yticklabels=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+    plt.xlabel('Predicted')
+    plt.ylabel('True')
+    plt.title('Confusion Matrix')
+    plt.show()
 
 # creating a dataset
 elif args.create_dataset:

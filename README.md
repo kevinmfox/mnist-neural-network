@@ -23,6 +23,11 @@ The implementation assumes a simple-ish Feedforward Neural Network (FNN), and su
 - Specified percentages for validation and testing sets
 - Batch Optimization
 
+## Other Features
+
+- Show images
+- Display Confusion Matrix
+
 ## Installation
 
 It's Python, so, pretty straight-forward. 

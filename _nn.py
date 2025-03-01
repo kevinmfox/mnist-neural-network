@@ -549,6 +549,31 @@ def testImage(testData, parameters, metadata):
     if metadata is not None:
         hiddenActivation = metadata['hiddenActivation']
         hiddenActivation = getattr(ActivationFunction, hiddenActivation)
+    else:
+        hiddenActivation = ActivationFunction.ReLU
     A, cache, _ = _forwardPropagation(testData, parameters, hiddenActivation=hiddenActivation)
     layers = len(parameters) // 4
     return A, cache[f'A{layers-1}']
+
+def createConfusionMatrix(trainingData, trainingLabels, parameters, metadata):
+    # if we don't have a model, create a random one
+    if parameters is None:
+        parameters = initializeNetwork([12])
+    if metadata is not None:
+        hiddenActivation = metadata['hiddenActivation']
+        hiddenActivation = getattr(ActivationFunction, hiddenActivation)
+    else:
+        hiddenActivation = ActivationFunction.ReLU
+
+    # run the predictions
+    A, _, _ = _forwardPropagation(trainingData, parameters, hiddenActivation=hiddenActivation)
+    # transform the predictions and true labels
+    predictions = np.argmax(A, axis=0)
+    trueLabels = np.argmax(trainingLabels, axis=0)
+
+    # create the matrix
+    matrix = np.zeros((10, 10), dtype=int)
+    for true, pred in zip(trueLabels, predictions):
+        matrix[true, pred] += 1
+    
+    return matrix, predictions, trueLabels
