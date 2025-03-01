@@ -86,7 +86,7 @@ def runPygame(modelParameters, modelMetadata):
     def drawHiddenValues(hiddenValues):
         spacing = 18
         # normalize the hidden values
-        normalized = (hiddenValues - np.min(hiddenValues)) / (np.max(hiddenValues) - np.min(hiddenValues))
+        normalized = (hiddenValues - np.min(hiddenValues)) / (np.max(hiddenValues) - np.min(hiddenValues) + 1e-8)
         # check for all zeros
         if np.isnan(normalized[0]):
             normalized = np.zeros_like(hiddenValues)
