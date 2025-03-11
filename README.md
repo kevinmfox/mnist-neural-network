@@ -161,7 +161,7 @@ Change how often stats are shown (```--stat_frequency```):
 
 The UI uses pygame to create/manage the interface.
 
-Run the UI (will assume model.plk as the model):
+Run the UI (will assume model.pkl as the model):
 
 ```main.py```
 
